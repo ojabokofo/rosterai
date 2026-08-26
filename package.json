@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "description": "Roster — the agent marketplace for BNB Chain. Discover, compare, and activate rebalancing, grid trading, yield, and health-factor agents.",
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": ["apps/*", "packages/*", "agents/*"],
   "scripts": {
     "dev:web": "pnpm --filter @roster/web dev",
     "dev:api": "pnpm --filter @roster/api dev",

@@ -14,6 +14,11 @@ Design: [Figma — Roster](https://www.figma.com/design/IdXM1oyefOs6uczpQuZ7Xk)
 - **Database:** Supabase (Postgres) — schema in `supabase/migrations/0001_init.sql`
 - **packages/shared:** types + the four fixed categories, shared by both apps
 
+## Repo layout
+
+- `apps/web`, `apps/api`, `packages/shared` — the marketplace (Sessions 1–5).
+- `agents/` — real, standalone agents that get *listed on* the marketplace. Separate from `apps/` on purpose: these are the things Roster surfaces, not part of Roster itself.
+
 ## Architecture notes
 
 - **A2A vs. hiring/payment.** Roster acts as an A2A *client* (`apps/api/src/a2a`): it can fetch an agent's own Agent Card (`/.well-known/agent-card.json`, per the [A2A spec](https://a2a-protocol.org)) and will later dispatch tasks to it. A2A doesn't cover payment — since TermiX actually hires (and presumably pays) through the marketplace, `activations` leaves room for a settlement decision later (direct transfer, x402, or otherwise) without being blocked on the Altana track, which this build isn't pursuing.
@@ -54,4 +59,15 @@ Apply the schema: paste `supabase/migrations/0001_init.sql` into your Supabase p
 - **Important, read before relying on this:** the Factory address and the WBNB/CAKE token addresses are cross-checked against PancakeSwap's own developer docs and BscScan, but I have no network path from this sandbox to BSC's RPC — none of this has actually been executed against a live node. Run `apps/api` and hit `/pancakeswap/pools` yourself before trusting it in a demo.
 - Deliberately decoupled from `CHAIN_ENV`: this always reads mainnet, regardless of what the agent-wallet checks in `client.ts` are pointed at, because testnet PancakeSwap liquidity wouldn't be real data worth showing.
 
-Not yet built: the Advantage Report tasks themselves, and swapping `apps/web` off mock data onto real `GET /agents` once agents are seeded in Supabase.
+**Session 5 — a place to actually show the Advantage Report, not just store it.**
+- `apps/web/app/advantage-report`: fetches `GET /advantage-report` and renders each task's with/without time, cost, and output links, plus a checklist against TermiX's own requirements — 3+ tasks logged, at least one from trading/stock/security — so it's obvious at a glance whether the report clears the bar, not just that a table exists.
+- Added `POST /advantage-report` (was GET-only) and fixed the same snake_case-vs-camelCase mismatch Session 3 caught in `activations.ts` — same bug, different table, fixed the same way.
+- **The real blocker isn't Supabase, it's agents.** The Advantage Report needs a real agent to run a task with vs. without — and nothing built so far *is* an agent; Roster only lists and activates them. Filling this in for real needs an actual rebalancing/grid/yield/health-factor agent deployed (via BNB Agent Studio, per the hackathon's own tooling) before there's anything to compare against a human doing the task manually.
+
+**Session 6 — the first real agent.**
+- `agents/health-factor-monitor`: reads live account liquidity off Venus Protocol's Core Pool Comptroller on BSC mainnet and alerts when a wallet is at risk of liquidation. Read-only — no private key, can't sign anything, can't move funds. That's deliberate: it's the safest version of the four categories to build first, and the only one whose MVP is complete without a signing/spend-cap story.
+- It can pull its list of wallets to watch straight from Roster (`GET /activations?agentId=`, added this session) or run fully standalone off a `MONITORED_WALLETS` env var — no hard dependency either way.
+- **Read `agents/health-factor-monitor/README.md` before demoing this one.** The Comptroller address and ABI are cross-checked against three independent sources, but nothing in this sandbox can reach a BSC RPC endpoint, so the actual onchain call has never run. Confirm it against a real wallet yourself first.
+- Explicitly does not attempt repayment or collateral top-ups yet — the fund-moving half of "Health Factor Monitoring" needs a key-management and spend-cap story before it's built, not a rushed one.
+
+Not yet built: the other three agents (Rebalancing, Grid Trading, Yield Optimisation), reporting real agent findings back into `agent_stats` so the marketplace shows live data instead of mock stats, and swapping `apps/web` off mock data once agents are seeded in Supabase.
