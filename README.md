@@ -42,6 +42,16 @@ Apply the schema: paste `supabase/migrations/0001_init.sql` into your Supabase p
 - Wallet connect (`wagmi`, injected connector only — MetaMask/Rabby-style; no WalletConnect Cloud project ID configured yet, so mobile wallets aren't wired up).
 - `ActivateButton` calls the real `POST /activations` on `apps/api` with the connected wallet address and shows connect → activating → activated states inline. This is the first place real data can land in the `activations` table.
 
-That closes the loop the main track's Functionality criterion describes almost verbatim: land, find an agent by category, understand what it does, activate it.
+**Session 3 — manage what you've activated.**
+- `apps/web/app/my-agents`: connect a wallet, see everything that wallet has activated (`GET /activations?wallet=`), revoke any of it (`POST /activations/:id/revoke`) with the row updating inline. No new backend routes needed — Session 1 already shipped them, this session just built the screen that calls them.
+- Fixed `apps/api/src/routes/activations.ts` to map Supabase's raw snake_case columns onto the shared camelCase `Activation` type before returning, instead of leaking DB column names to the frontend.
+- This is the one screen in the app that only means something once Supabase is actually configured — activate something, then check My Agents, and if it shows up your database round-trip works end to end.
 
-Not yet built: a "my agents" / revoke screen (the `POST /activations/:id/revoke` route already exists, no UI calls it yet), the Advantage Report tasks themselves (the table and route exist, no rows in it), PancakeSwap-specific benefit logic, and swapping `apps/web` off mock data onto real `GET /agents` once agents are seeded in Supabase.
+**Session 4 — real PancakeSwap data, read directly from the chain.**
+- `apps/api/src/chain/pancakeswap.ts`: calls PancakeSwap's own V3 Factory on BSC mainnet (`getPool`), then reads `slot0`/`liquidity` off the resulting pool contract. No third-party indexer, no API key. Ships with one verified pair (CAKE/WBNB, 0.25% tier) — see the file for how to add more, and why addresses are worth double-checking yourself before adding them.
+- New `GET /pancakeswap/pools` route, 30s in-memory cache so the discovery page doesn't hammer the public RPC on every load.
+- `PancakeSwapTicker` on the discovery page shows it live, linked out to BscScan — and renders nothing at all if the read fails, rather than showing something fake.
+- **Important, read before relying on this:** the Factory address and the WBNB/CAKE token addresses are cross-checked against PancakeSwap's own developer docs and BscScan, but I have no network path from this sandbox to BSC's RPC — none of this has actually been executed against a live node. Run `apps/api` and hit `/pancakeswap/pools` yourself before trusting it in a demo.
+- Deliberately decoupled from `CHAIN_ENV`: this always reads mainnet, regardless of what the agent-wallet checks in `client.ts` are pointed at, because testnet PancakeSwap liquidity wouldn't be real data worth showing.
+
+Not yet built: the Advantage Report tasks themselves, and swapping `apps/web` off mock data onto real `GET /agents` once agents are seeded in Supabase.
