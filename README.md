@@ -36,4 +36,12 @@ Apply the schema: paste `supabase/migrations/0001_init.sql` into your Supabase p
 
 **Session 1 — core infrastructure and architecture.** Monorepo, schema, API routes, and the discovery page are wired up; `apps/web` currently reads from `lib/mock-agents.ts` (four sample agents mirroring the Figma cards exactly) until real agent data is seeded and the page is pointed at `GET /agents` instead.
 
-Not yet built: agent detail/activate page, TermiX-facing hire view, revoke UI, the Advantage Report tasks themselves, PancakeSwap-specific benefit logic.
+**Session 2 — the discover → understand → activate loop, working end to end.**
+- Roster cards on the discovery page are now real links to `/agents/[id]`.
+- New agent detail page: full description, every stat (not just the two shown on the card), wallet address linked out to BscScan/testnet BscScan, chain, status.
+- Wallet connect (`wagmi`, injected connector only — MetaMask/Rabby-style; no WalletConnect Cloud project ID configured yet, so mobile wallets aren't wired up).
+- `ActivateButton` calls the real `POST /activations` on `apps/api` with the connected wallet address and shows connect → activating → activated states inline. This is the first place real data can land in the `activations` table.
+
+That closes the loop the main track's Functionality criterion describes almost verbatim: land, find an agent by category, understand what it does, activate it.
+
+Not yet built: a "my agents" / revoke screen (the `POST /activations/:id/revoke` route already exists, no UI calls it yet), the Advantage Report tasks themselves (the table and route exist, no rows in it), PancakeSwap-specific benefit logic, and swapping `apps/web` off mock data onto real `GET /agents` once agents are seeded in Supabase.
