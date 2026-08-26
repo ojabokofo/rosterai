@@ -1,5 +1,5 @@
-import { getAccountSnapshot } from "./venus.js";
-import { getWalletsFromRoster } from "./roster.js";
+import { getAccountSnapshot, type AccountSnapshot } from "./venus.js";
+import { getWalletsFromRoster, reportAggregateStats } from "./roster.js";
 import { sendAlert } from "./alert.js";
 import { config } from "./config.js";
 
@@ -18,14 +18,18 @@ async function tick() {
     return;
   }
 
+  const snapshots: AccountSnapshot[] = [];
   for (const wallet of wallets) {
     try {
       const snapshot = await getAccountSnapshot(wallet);
       await sendAlert(snapshot);
+      snapshots.push(snapshot);
     } catch (err) {
       console.error(`Failed to read account liquidity for ${wallet}:`, err);
     }
   }
+
+  await reportAggregateStats(snapshots);
 }
 
 console.log(`Health Factor Monitor starting — polling every ${config.pollIntervalMs / 1000}s`);
